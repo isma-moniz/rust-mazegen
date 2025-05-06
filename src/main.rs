@@ -14,6 +14,9 @@ enum Directions {
     W,
 }
 
+const WINDOW_WIDTH: u32 = 800;
+const WINDOW_HEIGHT: u32 = 600;
+
 #[derive(Clone, Copy)]
 struct Cell {
     visited: bool,
@@ -84,10 +87,12 @@ fn carve_path(x: usize, y: usize, grid: &mut Vec<Vec<Cell>>, rng: &mut ThreadRng
     }
 }
 
-fn main() {
+fn main() -> Result<(), String>{
     let args: Vec<String> = env::args().collect();
     let size = args[1].parse::<usize>().unwrap();
     let mut rng = rand::rng();
+    let sdl_context = sdl2::init()?;
+    let video_subsystem = sdl_context.video()?;
     
     let mut maze = vec![
         vec![
@@ -99,8 +104,39 @@ fn main() {
         ];
         size
     ];
+
+    let window = video_subsystem
+            .window("rust maze generator", WINDOW_WIDTH, WINDOW_HEIGHT)
+            .position_centered()
+            .opengl()
+            .build()
+            .map_err(|e| e.to_string())?;
+
+    let mut canvas = window.into_canvas().build().map_err(|e| e.to_string())?;
+
+    canvas.set_draw_color(Color::RGB(0, 0, 0));
+    canvas.clear();
+    canvas.present();
+    let mut event_pump = sdl_context.event_pump()?;
+
+    'running: loop {
+        for event in event_pump.poll_iter() {
+            match event {
+                Event::Quit {..}
+                | Event::KeyDown {
+                    keycode: Some(Keycode::Escape),
+                    ..
+                } => break 'running,
+                _ => {}
+            }
+        }
+        canvas.clear();
+        canvas.present();
+        carve_path(0, 0, &mut maze, &mut rng, size);
+        ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 30));
+    }
     
-    carve_path(0, 0, &mut maze, &mut rng, size);
+    Ok(())
 }
 
 fn print_maze(grid: &Vec<Vec<Cell>>, size: usize) {
