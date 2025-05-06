@@ -1,7 +1,7 @@
 use std::{env, thread, time};
 use rand::prelude::*;
 
-enum directions {
+enum Directions {
     N,
     E,
     S,
@@ -11,68 +11,66 @@ enum directions {
 #[derive(Clone, Copy)]
 struct Cell {
     visited: bool,
-    walls: [bool; 4] // [top, right, bottom, left]
+    walls: u8, // bit 0 = top, bit 1 = left
 }
 
-impl Cell {
-    fn escavate(&mut self, direction: directions) {
-        match direction {
-            directions::N => {
-                self.walls[0] = false;
-            }
-            directions::E => {
-                self.walls[1] = false;
-            }
-            directions::S => {
-                self.walls[2] = false;
-            }
-            directions::W => {
-                self.walls[3] = false;
-            }
+fn escavate(x: usize, y: usize, grid: &mut Vec<Vec<Cell>>, direction: Directions) {
+    match direction {
+        Directions::N => {
+            let current = &mut grid[y][x];
+            current.walls &= 0x02; // 00000010
+        }
+        Directions::E => {
+            let neighbor = &mut grid[y][x+1];
+            neighbor.walls &= 0x01; // 00000001
+        }
+        Directions::S => {
+            let neighbor = &mut grid[y+1][x];
+            neighbor.walls &= 0x02;
+        }
+        Directions::W => {
+            let current = &mut grid[y][x];
+            current.walls &= 0x01;
         }
     }
 }
 
 fn carve_path(x: usize, y: usize, grid: &mut Vec<Vec<Cell>>, rng: &mut ThreadRng, size: usize) {
     print_maze(&grid, size);
-    let mut directions= [directions::N, directions::E, directions::S, directions::W];
+    let mut directions= [Directions::N, Directions::E, Directions::S, Directions::W];
     directions.shuffle(rng);
     grid[y][x].visited = true;
     for i in 0..4 as usize{
         match directions[i] {
-            directions::N => {
+            Directions::N => {
                 if y == 0 {
                     continue;
                 } else if !grid[y-1][x].visited {
-                    grid[y][x].escavate(directions::N);
-                    grid[y - 1][x].escavate(directions::S);
+                    escavate(x, y, grid, Directions::N);
                     carve_path(x, y-1, grid, rng, size);
                 }
             }
-            directions::E => {
+            Directions::E => {
                 if x == size - 1 {
                     continue;
                 } else if !grid[y][x+1].visited {
-                    grid[y][x].escavate(directions::E);
-                    grid[y][x+1].escavate(directions::W);
+                    escavate(x, y, grid, Directions::E);
                     carve_path(x+1, y, grid, rng, size);
                 }
             }
-            directions::S => {
+            Directions::S => {
                 if y == size - 1 {
                     continue;
                 } else if !grid[y+1][x].visited {
-                    grid[y][x].escavate(directions::S);
-                    grid[y+1][x].escavate(directions::N);
+                    escavate(x, y, grid, Directions::S);
                     carve_path(x, y+1, grid, rng, size);
                 }
             }
-            directions::W => {
+            Directions::W => {
                 if x == 0 {
                     continue;
                 } else if !grid[y][x-1].visited {
-                    grid[y][x].escavate(directions::W);
-                    grid[y][x-1].escavate(directions::E);
+                    escavate(x, y, grid, Directions::W);
                     carve_path(x-1, y, grid, rng, size);
                 }
             }
@@ -89,7 +87,7 @@ fn main() {
         vec![
             Cell {
                 visited: false,
-                walls: [true; 4],
+                walls: 0x03, // 00000011
             };
             size
         ];
@@ -101,17 +99,17 @@ fn main() {
 
 fn print_maze(grid: &Vec<Vec<Cell>>, size: usize) {
     print!("{}[2J", 27 as char);
-    thread::sleep(time::Duration::from_millis(50));
+    thread::sleep(time::Duration::from_millis(200));
     for y in 0..size {
         // Print top walls
         for x in 0..size {
-            print!("{}", if grid[y][x].walls[0] { "+---" } else { "+   " });
+            print!("{}", if grid[y][x].walls & 0x01 != 0 { "+---" } else { "+   " });
         }
         println!("+");
 
         // Print side walls and spaces
         for x in 0..size {
-            print!("{}", if grid[y][x].walls[3] { "|   " } else { "    " });
+            print!("{}", if grid[y][x].walls & 0x02 != 0 { "|   " } else { "    " });
         }
         println!("|");
     }
