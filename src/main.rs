@@ -1,5 +1,11 @@
 use std::{env, thread, time};
 use rand::prelude::*;
+extern crate sdl2;
+
+use sdl2::event::Event;
+use sdl2::keyboard::Keycode;
+use sdl2::pixels::Color;
+use std::time::Duration;
 
 enum Directions {
     N,
@@ -99,7 +105,7 @@ fn main() {
 
 fn print_maze(grid: &Vec<Vec<Cell>>, size: usize) {
     print!("{}[2J", 27 as char);
-    thread::sleep(time::Duration::from_millis(200));
+    thread::sleep(time::Duration::from_millis(50));
     for y in 0..size {
         // Print top walls
         for x in 0..size {
